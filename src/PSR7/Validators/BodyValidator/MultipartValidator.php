@@ -44,7 +44,7 @@ use const JSON_ERROR_NONE;
 /**
  * Should validate multipart/* body types
  */
-class MultipartValidator implements MessageValidator
+class MultipartValidator extends AbstractBodyValidator
 {
     use ValidationStrategy;
     use BodyDeserialization;
@@ -60,6 +60,24 @@ class MultipartValidator implements MessageValidator
     {
         $this->mediaTypeSpec = $mediaTypeSpec;
         $this->contentType   = $contentType;
+    }
+
+    public function getBody(OperationAddress $addr, MessageInterface $message)
+    {
+        if ($message->getBody()->getSize()) {
+            $document = PSR7::convert($message);
+
+            return $this->deserializeBody($this->parseMultipartData($addr, $document), $this->mediaTypeSpec->schema);
+        }
+
+        if ($message instanceof ServerRequestInterface) {
+            $body = (array) $message->getParsedBody();
+            $files = $this->normalizeFiles($message->getUploadedFiles());
+
+            return array_replace($body, $files);
+        }
+
+        return null;
     }
 
     /**
@@ -88,12 +106,10 @@ class MultipartValidator implements MessageValidator
         MessageInterface $message,
         Schema $schema
     ): void {
-        // 1. Parse message body
-        $document = PSR7::convert($message);
-
         $validator = new SchemaValidator($this->detectValidationStrategy($message));
         try {
-            $body = $this->deserializeBody($this->parseMultipartData($addr, $document), $schema);
+            // 1. Parse message body
+            $body = $this->getBody($addr, $message);
             $validator->validate($body, $schema);
         } catch (SchemaMismatch $e) {
             throw InvalidBody::becauseBodyDoesNotMatchSchema($this->contentType, $addr, $e);
@@ -231,11 +247,7 @@ class MultipartValidator implements MessageValidator
         ServerRequestInterface $message,
         Schema $schema
     ): void {
-        $body = (array) $message->getParsedBody();
-
-        $files = $this->normalizeFiles($message->getUploadedFiles());
-
-        $body = array_replace($body, $files);
+        $body = $this->getBody($addr, $message);
 
         $validator = new SchemaValidator($this->detectValidationStrategy($message));
         try {

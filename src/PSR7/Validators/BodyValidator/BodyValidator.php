@@ -65,13 +65,29 @@ final class BodyValidator implements MessageValidator
         }
 
         // Validate message body
-        if (preg_match('#^multipart/.*#', $contentType)) {
-            (new MultipartValidator($mediaTypeSpec, $contentType))->validate($addr, $message);
-        } elseif (preg_match('#^application/x-www-form-urlencoded$#', $contentType)) {
-            (new FormUrlencodedValidator($mediaTypeSpec, $contentType))->validate($addr, $message);
-        } else {
-            (new UnipartValidator($mediaTypeSpec, $contentType))->validate($addr, $message);
+        $bodyValidator = $this->validateMessageBody($addr, $message, $mediaTypeSpec, $contentType);
+        if ($bodyValidator) {
+            (new BodySchemaValidator($schema, $contentType, $bodyValidator))->validate($addr, $message);
         }
+    }
+
+    private function validateMessageBody(
+        OperationAddress $addr,
+        MessageInterface $message,
+        MediaType $mediaTypeSpec,
+        string $contentType
+    ): ?AbstractBodyValidator {
+        if (preg_match('#^multipart/.*#', $contentType)) {
+            $validator = new MultipartValidator($mediaTypeSpec, $contentType);
+        } elseif (preg_match('#^application/x-www-form-urlencoded$#', $contentType)) {
+            $validator = new FormUrlencodedValidator($mediaTypeSpec, $contentType);
+        } else {
+            $validator = new UnipartValidator($mediaTypeSpec, $contentType);
+        }
+
+        $validator->validate($addr, $message);
+
+        return $validator;
     }
 
     private function messageContentType(MessageInterface $message): ?string

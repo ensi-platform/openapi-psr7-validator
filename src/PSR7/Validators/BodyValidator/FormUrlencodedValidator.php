@@ -23,7 +23,7 @@ use function parse_str;
 /**
  * Should validate "application/x-www-form-urlencoded" body types
  */
-class FormUrlencodedValidator implements MessageValidator
+class FormUrlencodedValidator extends AbstractBodyValidator
 {
     use ValidationStrategy;
     use BodyDeserialization;
@@ -37,6 +37,11 @@ class FormUrlencodedValidator implements MessageValidator
     {
         $this->mediaTypeSpec = $mediaTypeSpec;
         $this->contentType   = $contentType;
+    }
+
+    public function getBody(OperationAddress $addr, MessageInterface $message)
+    {
+        return $this->deserializeBody($this->parseUrlencodedData($message), $this->mediaTypeSpec->schema);
     }
 
     /**
@@ -57,7 +62,7 @@ class FormUrlencodedValidator implements MessageValidator
 
         $validator = new SchemaValidator($this->detectValidationStrategy($message));
         try {
-            $body = $this->deserializeBody($this->parseUrlencodedData($message), $schema);
+            $body = $this->getBody($addr, $message);
             $validator->validate($body, $schema);
         } catch (SchemaMismatch $e) {
             throw InvalidBody::becauseBodyDoesNotMatchSchema($this->contentType, $addr, $e);
