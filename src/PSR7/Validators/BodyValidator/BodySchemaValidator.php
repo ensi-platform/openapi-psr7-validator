@@ -38,7 +38,9 @@ class BodySchemaValidator implements MessageValidator
         string $contentType,
         AbstractBodyValidator $baseValidator
     ) {
-
+        $this->schema = $schema;
+        $this->contentType = $contentType;
+        $this->baseValidator = $baseValidator;
     }
 
     public function validate(OperationAddress $addr, MessageInterface $message): void
