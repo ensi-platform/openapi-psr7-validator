@@ -92,13 +92,13 @@ class BodySchemaValidator implements MessageValidator
                 }
 
                 $subSchema = $properties[$prop];
-                if ($subSchema->{self::SKIP_VALUE} ?? false) {
+                if ($this->isSkip($subSchema)) {
                     continue;
                 }
 
                 if (ArrayHelper::isAssoc($value)) {
                     $this->check($value, $subSchema, $breadCrumb->addCrumb($prop));
-                } elseif (is_array($value[0])) {
+                } elseif (is_array($value[0]) && $this->isNotSkip($subSchema->items)) {
                     // check only first item
                     $this->check($value[0], $subSchema->items, $breadCrumb->addCrumb($prop));
                 }
@@ -108,6 +108,16 @@ class BodySchemaValidator implements MessageValidator
 
             throw InvalidBody::becauseBodyDoesNotMatchSchema($this->contentType, $this->addr, $e);
         }
+    }
+
+    private function isSkip(Schema $schema): bool
+    {
+        return $schema->{self::SKIP_VALUE} ?? false;
+    }
+
+    private function isNotSkip(Schema $schema): bool
+    {
+        return !$this->isSkip($schema);
     }
 
     private function throw(string $prop, array $body)
