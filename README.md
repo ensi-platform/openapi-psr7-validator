@@ -11,7 +11,7 @@ expressed in YAML or JSON.
 
 ## Installation
 ```
-composer require league/openapi-psr7-validator
+composer require ensi/openapi-psr7-validator
 ```
 
 ## OpenAPI (OAS) Terms
