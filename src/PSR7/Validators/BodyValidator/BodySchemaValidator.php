@@ -83,8 +83,6 @@ class BodySchemaValidator implements MessageValidator
         try {
             $properties = $this->getAllProperties($schema);
             foreach ($body as $prop => $value) {
-                # $breadCrumb = $breadCrumb->addCrumb($prop);
-
                 if (!array_key_exists($prop, $properties)) {
                     $this->throw($prop, $body);
                 }
