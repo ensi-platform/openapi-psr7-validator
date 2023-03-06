@@ -62,15 +62,15 @@ class BodySchemaValidator implements MessageValidator
         }
     }
 
-    protected function getAllProperties(Schema $schema): array
+    protected function getCollapseProperties(Schema $schema): array
     {
-        $properties = array_flip(array_keys($schema->properties ?? []));
+        $properties = $schema->properties ?? [];
         foreach ($schema->allOf ?? [] as $subSchema) {
-            $properties = array_merge($properties, $this->getAllProperties($subSchema));
+            $properties = array_merge($properties, $this->getCollapseProperties($subSchema));
         }
 
         foreach ($schema->oneOf ?? [] as $subSchema) {
-            $properties = array_merge($properties, $this->getAllProperties($subSchema));
+            $properties = array_merge($properties, $this->getCollapseProperties($subSchema));
         }
 
         return $properties;
@@ -81,7 +81,7 @@ class BodySchemaValidator implements MessageValidator
         $breadCrumb = $breadCrumb ?? new BreadCrumb();
 
         try {
-            $properties = $this->getAllProperties($schema);
+            $properties = $this->getCollapseProperties($schema);
             foreach ($body as $prop => $value) {
                 if (!array_key_exists($prop, $properties)) {
                     $this->throw($prop, $body);
@@ -91,14 +91,14 @@ class BodySchemaValidator implements MessageValidator
                     continue;
                 }
 
-                $subSchema = $schema->properties[$prop];
+                $subSchema = $properties[$prop];
                 if ($subSchema->{self::SKIP_VALUE} ?? false) {
                     continue;
                 }
 
                 if (ArrayHelper::isAssoc($value)) {
                     $this->check($value, $subSchema, $breadCrumb->addCrumb($prop));
-                } else {
+                } elseif (is_array($value[0])) {
                     // check only first item
                     $this->check($value[0], $subSchema->items, $breadCrumb->addCrumb($prop));
                 }
