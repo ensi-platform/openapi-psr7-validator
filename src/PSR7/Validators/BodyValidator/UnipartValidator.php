@@ -8,7 +8,6 @@ use cebe\openapi\spec\MediaType;
 use League\OpenAPIValidation\PSR7\Exception\NoPath;
 use League\OpenAPIValidation\PSR7\Exception\Validation\InvalidBody;
 use League\OpenAPIValidation\PSR7\Exception\ValidationFailed;
-use League\OpenAPIValidation\PSR7\MessageValidator;
 use League\OpenAPIValidation\PSR7\OperationAddress;
 use League\OpenAPIValidation\PSR7\Validators\ValidationStrategy;
 use League\OpenAPIValidation\Schema\Exception\SchemaMismatch;
@@ -22,7 +21,7 @@ use function preg_match;
 
 use const JSON_ERROR_NONE;
 
-class UnipartValidator implements MessageValidator
+class UnipartValidator extends AbstractBodyValidator
 {
     use ValidationStrategy;
 
@@ -37,11 +36,7 @@ class UnipartValidator implements MessageValidator
         $this->contentType   = $contentType;
     }
 
-    /**
-     * @throws NoPath
-     * @throws ValidationFailed
-     */
-    public function validate(OperationAddress $addr, MessageInterface $message): void
+    public function getBody(OperationAddress $addr, MessageInterface $message)
     {
         if (preg_match('#^application/.*json$#', $this->contentType)) {
             $body = json_decode((string) $message->getBody(), true);
@@ -52,8 +47,19 @@ class UnipartValidator implements MessageValidator
             $body = (string) $message->getBody();
         }
 
+        return $body;
+    }
+
+    /**
+     * @throws NoPath
+     * @throws ValidationFailed
+     */
+    public function validate(OperationAddress $addr, MessageInterface $message): void
+    {
         $validator = new SchemaValidator($this->detectValidationStrategy($message));
-        $schema    = $this->mediaTypeSpec->schema;
+        $body = $this->getBody($addr, $message);
+        $schema = $this->mediaTypeSpec->schema;
+
         try {
             $validator->validate($body, $schema);
         } catch (SchemaMismatch $e) {
